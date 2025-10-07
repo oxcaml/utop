@@ -293,6 +293,10 @@ let parse_default parse str eos_is_error =
                  Printf.sprintf "Error: broken invariant in parsetree: %s" s)
       | Syntaxerr.Invalid_package_type (loc, err) ->
           Error ([mkloc loc], UTop_compat.invalid_package_error_to_string err)
+      | Missing_unboxed_literal_suffix loc ->
+          Error ([mkloc loc], "Missing unboxed literal suffix")
+      | Malformed_instance_identifier loc ->
+          Error ([mkloc loc], "Malformed instance identifier")
 #if OCAML_VERSION >= (5, 0, 0)
       | Syntaxerr.Removed_string_set loc ->
           Error ([mkloc loc],

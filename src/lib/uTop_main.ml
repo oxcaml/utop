@@ -340,8 +340,10 @@ end = struct
     let new_cmis = ref [] in
     UTop_compat.add_cmi_hook (fun cmi -> new_cmis := cmi :: !new_cmis );
     fun pp ->
-      List.iter (fun (cmi : Cmi_format.cmi_infos) ->
-        walk_sig pp ~path:(Longident.Lident cmi.cmi_name) cmi.cmi_sign
+      List.iter (fun (cmi : Cmi_format.cmi_infos_lazy) ->
+        let cmi_name = Compilation_unit.Name.to_string cmi.cmi_name in
+        let cmi_sign = Subst.Lazy.force_signature cmi.cmi_sign in
+        walk_sig pp ~path:(Longident.Lident cmi_name) cmi_sign
       ) !new_cmis;
       new_cmis := []
 
@@ -356,24 +358,28 @@ end = struct
         if path = Path.Pident id then
           walk_mty pp name md_type
       in
+      let scan_compilation_unit env id =
+        let id = Compilation_unit.to_global_ident_for_bytecode id in
+        scan_module env id
+      in
       let rec scan_globals last = function
         | [] -> ()
         | x when x == last -> ()
         | x :: xs ->
           scan_globals last xs;
-          scan_module env x
+          scan_compilation_unit env x
       in
       let rec scan_summary last = function
         | Env.Env_empty -> ()
         | x when x == last -> ()
-        | Env.Env_module (s, id, _, _) ->
+        | Env.Env_module (s, id, _, _, _, _) ->
           scan_summary last s;
           scan_module env id
         | Env.Env_copy_types s
         | Env.Env_value_unbound (s, _, _)
         | Env.Env_module_unbound (s, _, _)
         | Env.Env_persistent (s, _)
-        | Env.Env_value (s, _, _)
+        | Env.Env_value (s, _, _, _)
         | Env.Env_type (s, _, _)
         | Env.Env_extension (s, _, _)
         | Env.Env_modtype (s, _, _)
@@ -432,7 +438,7 @@ let map_items unwrap wrap items =
          match sig_item with
          | Outcometree.Osig_class (_, name, _, _, rs)
          | Outcometree.Osig_class_type (_, name, _, _, rs)
-         | Outcometree.Osig_module (name, _, rs)
+         | Outcometree.Osig_module (name, _, _, rs)
          | Outcometree.Osig_type ({ Outcometree.otype_name = name }, rs) ->
             (name, rs)
          | Outcometree.Osig_typext ({ Outcometree.oext_name = name}, _)
@@ -466,9 +472,9 @@ let map_items unwrap wrap items =
                    wrap (Outcometree.Osig_class_type (a, name, b, c, Outcometree.Orec_first)) extra :: items'
                  else
                    items
-              | Outcometree.Osig_module (name, a, rs) ->
+              | Outcometree.Osig_module (name, a, m, rs) ->
                  if rs = Outcometree.Orec_next then
-                   wrap (Outcometree.Osig_module (name, a, Outcometree.Orec_first)) extra :: items'
+                   wrap (Outcometree.Osig_module (name, a, m, Outcometree.Orec_first)) extra :: items'
                  else
                    items
               | Outcometree.Osig_type (oty, rs) ->
@@ -630,7 +636,7 @@ let rewrite_str_item pstr_item tstr_item =
   match pstr_item, tstr_item.Typedtree.str_desc with
     | ({ Parsetree.pstr_desc = Parsetree.Pstr_eval (e, _);
          Parsetree.pstr_loc = loc },
-       Typedtree.Tstr_eval ({ Typedtree.exp_type = typ }, _)) -> begin
+       Typedtree.Tstr_eval ({ Typedtree.exp_type = typ }, _, _)) -> begin
       match rule_of_type typ with
         | Some rule ->
           { Parsetree.pstr_desc = Parsetree.Pstr_eval (rule.rewrite loc e, []);
@@ -643,7 +649,7 @@ let rewrite_str_item pstr_item tstr_item =
 
 let type_structure env pstr =
 #if OCAML_VERSION >= (4, 14, 0)
-  let tstr, _, _, _, _ = Typemod.type_structure env pstr in
+  let tstr, _, _, _, _, _ = Typemod.type_structure env pstr in
 #elif OCAML_VERSION >= (4, 12, 0)
   let tstr, _, _, _ = Typemod.type_structure env pstr in
 #else
@@ -1217,15 +1223,21 @@ let typeof sid =
       Some (Printtyp.tree_of_value_description id val_descr)
     with Not_found ->
     try
-      let lbl_desc = Env.find_label_by_name id env in
+      let lbl_desc = Env.find_label_by_name Legacy id env in
       let (path, ty_decl) = from_type_desc (lbl_res lbl_desc) in
       let id = Ident.create_local (Path.name path) in
       Some (Printtyp.tree_of_type_declaration id ty_decl Types.Trec_not)
     with Not_found ->
     try
-      let path, {Types.md_type; _} = Env.find_module_by_name id env in
+      let lbl_desc = Env.find_label_by_name Unboxed_product id env in
+      let (path, ty_decl) = from_type_desc (lbl_res lbl_desc) in
       let id = Ident.create_local (Path.name path) in
-      Some (Printtyp.tree_of_module id md_type Types.Trec_not)
+      Some (Printtyp.tree_of_type_declaration id ty_decl Types.Trec_not)
+    with Not_found ->
+    try
+      let path, md_dec = Env.find_module_by_name id env in
+      let id = Ident.create_local (Path.name path) in
+      Some (Printtyp.tree_of_module id md_dec Types.Trec_not)
     with Not_found ->
     try
       let (path, mty_decl) = Env.find_modtype_by_name id env in
@@ -1546,8 +1558,9 @@ type value = V : string * _ -> value
 exception Found of Env.t
 
 let get_required_label name args =
-  match List.find (fun (lab, _) -> lab = Asttypes.Labelled name) args with
-  | _, x -> present_arg x
+  match List.find (fun (lab, _) -> lab = Typedtree.Labelled name) args with
+  | _, Typedtree.Omitted _ -> None
+  | _, Typedtree.Arg (x, _) -> Some x
   | exception Not_found -> None
 
 let walk dir ~init ~f =
@@ -1582,7 +1595,7 @@ let interact ?(search_path=[]) ?(build_dir="_build") ~unit ~loc:(fname, lnum, cn
   let cmt_infos = Cmt_format.read_cmt cmt_fname in
   let expr next (e : Typedtree.expression) =
     match e.exp_desc with
-        | Texp_apply (_, args) -> begin
+        | Texp_apply (_, args, _, _, _) -> begin
             try
               match get_required_label "loc"    args,
                     get_required_label "values" args
