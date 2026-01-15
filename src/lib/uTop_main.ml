@@ -26,6 +26,14 @@ module String_set = Set.Make(String)
 
 exception Term of int
 
+let find_module_by_name longident env =
+  let (path, md_lazy) = Env.find_module_by_name_lazy longident env in
+  (path, Subst.Lazy.force_module_decl md_lazy)
+
+let find_modtype_by_name longident env =
+  let (path, mty_lazy) = Env.find_modtype_by_name_lazy longident env in
+  (path, Subst.Lazy.force_modtype_decl mty_lazy)
+
 (* +-----------------------------------------------------------------+
    | History                                                         |
    +-----------------------------------------------------------------+ *)
@@ -354,7 +362,7 @@ end = struct
       let env = !Toploop.toplevel_env in
       let scan_module env id =
         let name = Longident.Lident (Ident.name id) in
-        let path, {md_type; _} = Env.find_module_by_name name env in
+        let path, {md_type; _} = find_module_by_name name env in
         if path = Path.Pident id then
           walk_mty pp name md_type
       in
@@ -1235,12 +1243,12 @@ let typeof sid =
       Some (Printtyp.tree_of_type_declaration id ty_decl Types.Trec_not)
     with Not_found ->
     try
-      let path, md_dec = Env.find_module_by_name id env in
+      let path, md_dec = find_module_by_name id env in
       let id = Ident.create_local (Path.name path) in
       Some (Printtyp.tree_of_module id md_dec Types.Trec_not)
     with Not_found ->
     try
-      let (path, mty_decl) = Env.find_modtype_by_name id env in
+      let (path, mty_decl) = find_modtype_by_name id env in
       let id = Ident.create_local (Path.name path) in
       Some (Printtyp.tree_of_modtype_declaration id mty_decl)
     with Not_found ->

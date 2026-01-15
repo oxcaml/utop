@@ -31,6 +31,10 @@ let lookup_env f x env =
   with Not_found | Env.Error _ ->
     None
 
+let find_module_by_name longident env =
+  let (path, md_lazy) = Env.find_module_by_name_lazy longident env in
+  (path, Subst.Lazy.force_module_decl md_lazy)
+
 (* +-----------------------------------------------------------------+
    | Parsing                                                         |
    +-----------------------------------------------------------------+ *)
@@ -486,7 +490,7 @@ let names_of_module longident =
   try
     Longident_map.find longident !local_names_by_longident
   with Not_found ->
-    match lookup_env Env.find_module_by_name longident !Toploop.toplevel_env with
+    match lookup_env find_module_by_name longident !Toploop.toplevel_env with
       | Some(path, {md_type; _}) ->
           let names = names_of_module_type md_type in
           local_names_by_path := Path_map.add path names !local_names_by_path;
@@ -500,7 +504,7 @@ let fields_of_module longident =
   try
     Longident_map.find longident !local_fields_by_longident
   with Not_found ->
-    match lookup_env Env.find_module_by_name longident !Toploop.toplevel_env with
+    match lookup_env find_module_by_name longident !Toploop.toplevel_env with
       | Some(path, {md_type; _}) ->
           let fields = fields_of_module_type md_type in
           local_fields_by_path := Path_map.add path fields !local_fields_by_path;
