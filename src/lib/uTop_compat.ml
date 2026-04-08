@@ -103,11 +103,7 @@ let rec is_persistent_path = function
 
 #if OCAML_VERSION >= (5, 2, 0)
 let inline_code =
-#if OCAML_VERSION >= (5, 3, 0)
   (Format_doc.compat Misc.Style.inline_code)
-#else
-  Misc.Style.inline_code
-#endif
 #endif
 
 let invalid_package_error_to_string err =
