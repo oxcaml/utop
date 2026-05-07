@@ -293,32 +293,44 @@ let parse_default parse str eos_is_error =
                  Printf.sprintf "Error: broken invariant in parsetree: %s" s)
       | Syntaxerr.Invalid_package_type (loc, err) ->
           Error ([mkloc loc], UTop_compat.invalid_package_error_to_string err)
-      | Missing_unboxed_literal_suffix loc ->
-          Error ([mkloc loc], "Missing unboxed literal suffix")
-      | Malformed_instance_identifier loc ->
-          Error ([mkloc loc], "Malformed instance identifier")
-      | Unspliceable loc ->
-          Error ([mkloc loc], "Syntax error: unspliceable expression")
-      | Let_mutable_not_allowed_at_structure_level loc ->
-          Error ([mkloc loc],
-                 "Syntax error: 'let mutable' is not allowed at the structure level")
-      | Let_mutable_not_allowed_in_class_definition loc ->
-          Error ([mkloc loc],
-                 "Syntax error: 'let mutable' is not allowed in a class definition")
-      | Let_mutable_not_allowed_with_function_bindings loc ->
-          Error ([mkloc loc],
-                 "Syntax error: 'let mutable' is not allowed with function bindings")
-      | Block_access_bad_paren loc ->
-          Error ([mkloc loc],
-                 "Syntax error: bad parenthesisation in block access")
 #if OCAML_VERSION >= (5, 0, 0)
       | Syntaxerr.Removed_string_set loc ->
-          Error ([mkloc loc],
-            "Syntax error: strings are immutable, there is no assignment \
-             syntax for them.\n\
-             Hint: Mutable sequences of bytes are available in the Bytes module.\n\
-             Hint: Did you mean to use 'Bytes.set'?")
+        Error ([mkloc loc],
+                "Syntax error: strings are immutable, there is no assignment \
+                syntax for them.\n\
+                Hint: Mutable sequences of bytes are available in \
+                the Bytes module.\n\
+                Hint: Did you mean to use 'Bytes.set'?")
 #endif
+      | Syntaxerr.Missing_unboxed_literal_suffix loc ->
+        Error ([mkloc loc],
+               "Syntax error: Unboxed integer literals require width suffixes.")
+      | Syntaxerr.Malformed_instance_identifier loc ->
+        Error ([mkloc loc],
+               "Syntax error: Unexpected in instance identifier")
+      | Syntaxerr.Let_mutable_not_allowed_at_structure_level loc ->
+        Error ([mkloc loc],
+                "Syntax error: Mutable let bindings are not allowed \
+                 at the structure level.")
+      | Syntaxerr.Let_mutable_not_allowed_in_class_definition loc ->
+        Error ([mkloc loc],
+                "Syntax error: Mutable let bindings are not allowed \
+                 inside class definitions.")
+      | Syntaxerr.Let_mutable_not_allowed_with_function_bindings loc ->
+        Error ([mkloc loc],
+                "Syntax error: Mutable let is not allowed with function bindings.\n\
+                 Hint: If you really want a mutable function variable, \
+                 use the de-sugared syntax:\n  let mutable f = fun x -> ..")
+      | Syntaxerr.Block_access_bad_paren loc ->
+        Error ([mkloc loc],
+                "Syntax error: A parenthesis here can only follow one of: \n  \
+                 '.', '.L', '.l', '.n', '.:', '.:L', '.:l', '.:n', '.idx_imm', \
+           '.idx_mut'.")
+      | Syntaxerr.Unspliceable loc ->
+        Error ([mkloc loc],
+          "Syntax error: expression cannot be spliced.\n\
+           Hint: consider putting parentheses around the \
+           expression.")
     end
     | Syntaxerr.Escape_error | Parsing.Parse_error ->
         Error ([mkloc (Location.curr lexbuf)],
