@@ -435,7 +435,8 @@ let rec names_of_module_type = function
            | Sig_module (id, _, _, _, _)
            | Sig_modtype (id, _, _)
            | Sig_class (id, _, _, _)
-           | Sig_class_type (id, _, _, _) ->
+           | Sig_class_type (id, _, _, _)
+           | Sig_jkind (id, _, _) ->
                add (Ident.name id) acc
            | Sig_type (id, decl, _, _) ->
                add_names_of_type decl (add (Ident.name id) acc))
@@ -464,7 +465,8 @@ let rec fields_of_module_type = function
            | Sig_module _
            | Sig_modtype _
            | Sig_class _
-           | Sig_class_type _ ->
+           | Sig_class_type _
+           | Sig_jkind _ ->
                acc
            | Sig_type (_, decl, _, _) ->
                add_fields_of_type decl acc)
@@ -541,6 +543,8 @@ let list_global_names () =
         loop acc summary
     | Env.Env_copy_types summary ->
         loop acc summary
+    | Env.Env_jkind (summary, id, _) ->
+        loop (add (Ident.name id) acc) summary
     | Env.Env_open(summary, path) ->
         match try Some (Path_map.find path !local_names_by_path) with Not_found -> None with
           | Some names ->
@@ -595,6 +599,8 @@ let list_global_fields () =
         loop acc summary
     | Env.Env_copy_types summary ->
         loop acc summary
+    | Env.Env_jkind (summary, id, _) ->
+        loop (add (Ident.name id) acc) summary
     | Env.Env_open(summary, path) ->
         match try Some (Path_map.find path !local_fields_by_path) with Not_found -> None with
           | Some fields ->

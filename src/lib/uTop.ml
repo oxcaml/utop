@@ -297,6 +297,20 @@ let parse_default parse str eos_is_error =
           Error ([mkloc loc], "Missing unboxed literal suffix")
       | Malformed_instance_identifier loc ->
           Error ([mkloc loc], "Malformed instance identifier")
+      | Unspliceable loc ->
+          Error ([mkloc loc], "Syntax error: unspliceable expression")
+      | Let_mutable_not_allowed_at_structure_level loc ->
+          Error ([mkloc loc],
+                 "Syntax error: 'let mutable' is not allowed at the structure level")
+      | Let_mutable_not_allowed_in_class_definition loc ->
+          Error ([mkloc loc],
+                 "Syntax error: 'let mutable' is not allowed in a class definition")
+      | Let_mutable_not_allowed_with_function_bindings loc ->
+          Error ([mkloc loc],
+                 "Syntax error: 'let mutable' is not allowed with function bindings")
+      | Block_access_bad_paren loc ->
+          Error ([mkloc loc],
+                 "Syntax error: bad parenthesisation in block access")
 #if OCAML_VERSION >= (5, 0, 0)
       | Syntaxerr.Removed_string_set loc ->
           Error ([mkloc loc],

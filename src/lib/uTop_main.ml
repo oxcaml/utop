@@ -395,7 +395,8 @@ end = struct
         | Env.Env_cltype (s, _, _)
         | Env.Env_open (s, _)
         | Env.Env_functor_arg (s, _)
-        | Env.Env_constraints (s, _) ->
+        | Env.Env_constraints (s, _)
+        | Env.Env_jkind (s, _, _) ->
           scan_summary last s
       in
       let globals = Env.get_required_globals () in
@@ -451,7 +452,8 @@ let map_items unwrap wrap items =
             (name, rs)
          | Outcometree.Osig_typext ({ Outcometree.oext_name = name}, _)
          | Outcometree.Osig_modtype (name, _)
-         | Outcometree.Osig_value { oval_name = name; _ } ->
+         | Outcometree.Osig_value { oval_name = name; _ }
+         | Outcometree.Osig_jkind { ojkind_name = name; _ } ->
             (name, Outcometree.Orec_not)
          | Outcometree.Osig_ellipsis -> ("", Outcometree.Orec_not)
        in
@@ -493,7 +495,8 @@ let map_items unwrap wrap items =
               | Outcometree.Osig_typext _
               | Outcometree.Osig_ellipsis
               | Outcometree.Osig_modtype _
-              | Outcometree.Osig_value _ ->
+              | Outcometree.Osig_value _
+              | Outcometree.Osig_jkind _ ->
                  items
          in
          aux acc items
