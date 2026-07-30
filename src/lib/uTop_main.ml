@@ -350,7 +350,7 @@ end = struct
     fun pp ->
       List.iter (fun (cmi : Cmi_format.cmi_infos_lazy) ->
         let cmi_name = Compilation_unit.Name.to_string cmi.cmi_name in
-        let cmi_sign = Subst.Lazy.force_signature cmi.cmi_sign in
+        let cmi_sign = Subst.Lazy.force_signature (fst cmi.cmi_sign) in
         walk_sig pp ~path:(Longident.Lident cmi_name) cmi_sign
       ) !new_cmis;
       new_cmis := []
@@ -1353,7 +1353,7 @@ let autoload = ref true
 
 let args = Arg.align [
   "-absname", Arg.Set Clflags.absname, " Show absolute filenames in error message";
-  "-I", Arg.String (fun dir ->  Clflags.include_dirs := dir :: !Clflags.include_dirs), "<dir> Add <dir> to the list of include directories";
+  "-I", Arg.String (fun dir ->  Clflags.include_dirs := {Clflags.path = dir; cmx_guaranteed = false} :: !Clflags.include_dirs), "<dir> Add <dir> to the list of include directories";
   "-init", Arg.String (fun s -> Clflags.init_file := Some s), "<file> Load <file> instead of default init file";
   "-labels", Arg.Clear Clflags.classic, " Use commuting label mode";
   "-no-app-funct", Arg.Clear Clflags.applicative_functors, " Deactivate applicative functors";

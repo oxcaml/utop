@@ -57,13 +57,16 @@ let toploop_all_directive_names () =
 let get_load_path () =
 #if OCAML_VERSION >= (5, 2, 0)
   let {Load_path.visible; hidden} = Load_path.get_paths () in
-  visible @ hidden
+  List.map (fun ({path; _} : Clflags.visible_include) -> path) visible @ hidden
 #else
   Load_path.get_paths ()
 #endif
 
 let set_load_path visible =
 #if OCAML_VERSION >= (5, 2, 0)
+  let visible =
+    List.map (fun path -> {Clflags.path; cmx_guaranteed = false}) visible
+  in
   Load_path.init ~auto_include:Load_path.no_auto_include ~visible ~hidden:[]
 #elif OCAML_VERSION >= (5, 0, 0)
   Load_path.init ~auto_include:Load_path.no_auto_include visible
@@ -170,7 +173,8 @@ let find_in_path_normalized =
 
 let visible_paths_for_cmt_infos (cmt_infos: Cmt_format.cmt_infos) =
 #if OCAML_VERSION >= (5, 2, 0)
-  cmt_infos.cmt_loadpath.visible
+  List.map (fun ({path; _} : Clflags.visible_include) -> path)
+    cmt_infos.cmt_loadpath.visible
 #else
   cmt_infos.cmt_loadpath
 #endif
